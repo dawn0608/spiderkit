@@ -1,6 +1,6 @@
 [project]
 name = "spiderkit"
-version = "0.1.1"
+version = "0.1.2"
 description = "一个面向爬虫与数据处理场景的 Python 工具包，覆盖加密解密、数据存储、异步下载和字体解析"
 readme = {file = "README.md", content-type = "text/markdown"}
 requires-python = ">=3.11"
@@ -39,3 +39,6 @@ build-backend = "hatchling.build"
 
 [tool.uv]
 publish-url = "https://upload.pypi.org/legacy/"
+
+[tool.hatch.build.targets.wheel]
+packages = ["config", "crypto", "downloader", "storage", "utils"]
