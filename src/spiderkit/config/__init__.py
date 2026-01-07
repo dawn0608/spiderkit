@@ -3,6 +3,6 @@
 提供全局配置管理功能
 """
 
-from config.settings import SpiderKitConfig, get_config, set_config
+from .settings import SpiderKitConfig, get_config, set_config
 
 __all__ = ["SpiderKitConfig", "get_config", "set_config"]

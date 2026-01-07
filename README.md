@@ -50,9 +50,10 @@ pip install -e .
 
 ```python
 import os
+
 from spiderkit.crypto import generate_rsa_keypair, rsa_encrypt, rsa_decrypt, aes_encrypt, aes_decrypt
 
-plaintext = "Hello SpiderKit!"
+plaintext = "Hello World!"
 
 # RSA 加密解密
 public_key, private_key = generate_rsa_keypair()
@@ -114,7 +115,7 @@ print(decrypted_text)
 ```python
 from spiderkit.utils import md5, sha1, sha256, sha512, sha3_256, blake2b
 
-text = "Hello SpiderKit!"
+text = "Hello World!"
 
 # 默认输出 hex
 print(md5(text))
@@ -161,7 +162,7 @@ save_data_to_file(data, "users", "jsonl")
 SpiderKit 提供统一配置入口，可在运行时调整行为或用环境变量覆盖。
 
 ```python
-from spiderkit.config import SpiderKitConfig, get_config, set_config
+from spiderkit.config import get_config, set_config
 
 config = get_config()
 config.downloader_concurrency = 8

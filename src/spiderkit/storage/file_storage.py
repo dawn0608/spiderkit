@@ -9,7 +9,8 @@ from pathlib import Path
 from typing import List, Dict, Any, Optional, Union
 
 from loguru import logger
-from config import get_config
+
+from ..config import get_config
 
 
 def save_data_to_file(data: Union[Dict[str, Any], List[Dict[str, Any]]], filename: str, file_format: Optional[str] = None, output_dir: Optional[str] = None,

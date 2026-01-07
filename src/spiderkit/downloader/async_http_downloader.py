@@ -12,7 +12,7 @@ import aiofiles
 from tqdm import tqdm
 from loguru import logger
 
-from config import get_config
+from ..config import get_config
 
 
 class Downloader:
