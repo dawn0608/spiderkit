@@ -19,7 +19,7 @@ from fontTools.ttLib import TTFont
 from PIL.ImageFont import FreeTypeFont
 from PIL import Image, ImageDraw, ImageFont
 
-from spiderkit.config import get_config
+from config import get_config
 
 
 @dataclass(frozen=True)

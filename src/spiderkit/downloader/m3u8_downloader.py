@@ -10,8 +10,8 @@ from typing import Optional, Dict, List
 import m3u8
 from loguru import logger
 
-from spiderkit.config import get_config
-from spiderkit.downloader.async_http_downloader import Downloader
+from config import get_config
+from downloader.async_http_downloader import Downloader
 
 
 class M3U8Downloader(Downloader):
