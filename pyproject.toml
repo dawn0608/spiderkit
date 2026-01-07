@@ -1,12 +1,10 @@
 [project]
 name = "spiderkit"
-version = "0.1.1"
+version = "0.1.6"
 description = "一个面向爬虫与数据处理场景的 Python 工具包，覆盖加密解密、数据存储、异步下载和字体解析"
 readme = {file = "README.md", content-type = "text/markdown"}
 requires-python = ">=3.11"
-authors = [
-    {name = "Dawn", email = "3439972272@qq.com"},
-]
+authors = [{name = "Dawn", email = "3439972272@qq.com"}]
 license = {text = "MIT"}
 keywords = ["spider", "crawler", "encryption", "download", "font-parser", "async"]
 classifiers = [
@@ -37,5 +35,11 @@ dependencies = [
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[tool.hatch.build.targets.wheel]
+packages = ["src/spiderkit"]
+
 [tool.uv]
 publish-url = "https://upload.pypi.org/legacy/"
+
+[project.urls]
+Homepage = "https://github.com/dawn0608/spiderkit"

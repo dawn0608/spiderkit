@@ -50,13 +50,7 @@ pip install -e .
 
 ```python
 import os
-from spiderkit.crypto import (
-    generate_rsa_keypair,
-    rsa_encrypt,
-    rsa_decrypt,
-    aes_encrypt,
-    aes_decrypt,
-)
+from spiderkit.crypto import generate_rsa_keypair, rsa_encrypt, rsa_decrypt, aes_encrypt, aes_decrypt
 
 plaintext = "Hello SpiderKit!"
 
