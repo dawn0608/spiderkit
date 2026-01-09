@@ -3,9 +3,8 @@
 提供高性能异步文件下载
 """
 
-import os
 import asyncio
-from typing import Optional, Dict
+from pathlib import Path
 
 import aiohttp
 import aiofiles
@@ -20,11 +19,11 @@ class Downloader:
 
     def __init__(
             self,
-            headers: Optional[Dict[str, str]] = None,
-            concurrency: Optional[int] = None,
-            timeout: Optional[int] = None,
-            max_retries: Optional[int] = None,
-            retry_delay: Optional[float] = None,
+            headers: dict[str, str] | None = None,
+            concurrency: int | None = None,
+            timeout: int | None = None,
+            max_retries: int | None = None,
+            retry_delay: float | None = None,
     ):
         """初始化下载器
 
@@ -42,7 +41,7 @@ class Downloader:
         self.max_retries = max_retries or config.downloader_max_retries
         self.retry_delay = retry_delay or config.downloader_retry_delay
 
-    async def _fetch_url_content(self, session: aiohttp.ClientSession, url: str) -> Optional[bytes]:
+    async def _fetch_url_content(self, session: aiohttp.ClientSession, url: str) -> bytes | None:
         """获取 URL 内容
 
         Args:
@@ -51,9 +50,6 @@ class Downloader:
 
         Returns:
             文件内容字节数据, 失败时返回 None
-
-        Raises:
-            Exception: 网络请求失败时抛出
         """
         for attempt in range(1, self.max_retries + 1):
             try:
@@ -78,17 +74,12 @@ class Downloader:
 
         Returns:
             写入成功返回 True, 失败返回 False
-
-        Raises:
-            Exception: 文件写入失败时抛出
         """
         if not content:
             return False
-
         try:
-            dir_path = os.path.dirname(file_path)
-            if dir_path:
-                os.makedirs(dir_path, exist_ok=True)
+            file_path_obj = Path(file_path)
+            file_path_obj.parent.mkdir(parents=True, exist_ok=True)
             async with aiofiles.open(file_path, "wb") as file:
                 await file.write(content)
             return True
@@ -106,30 +97,20 @@ class Downloader:
 
         Returns:
             下载成功返回 True, 失败返回 False
-
-        Raises:
-            Exception: 下载失败时抛出
         """
         async with self.semaphore:
             content = await self._fetch_url_content(session, url)
             return await self._write_to_file(file_path, content)
 
-    async def _download_multiple_files(self, file_url_mapping: Dict[str, str]) -> None:
+    async def _download_multiple_files(self, file_url_mapping: dict[str, str]) -> None:
         """批量下载文件
 
         Args:
             file_url_mapping: 文件路径到 URL 的映射
-
-        Returns:
-            无
-
-        Raises:
-            Exception: 下载失败时抛出
         """
         try:
             async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False, limit=0), timeout=self.timeout) as session:
                 tasks = [self._download_single_file(session, file_path, url) for file_path, url in file_url_mapping.items()]
-
                 successful_downloads = 0
                 with tqdm(total=len(tasks), desc="下载文件中") as pbar:
                     for future in asyncio.as_completed(tasks):
@@ -138,29 +119,21 @@ class Downloader:
                             successful_downloads += 1
                         pbar.update(1)
                         pbar.set_postfix(success=successful_downloads, total=len(tasks))
-
                 logger.info(f"下载完成: {successful_downloads}/{len(tasks)} 个文件成功")
         except Exception:
             logger.exception("批量下载文件失败")
             raise
 
-    def download_files(self, file_url_mapping: Dict[str, str]) -> None:
+    def download_files(self, file_url_mapping: dict[str, str]) -> None:
         """下载文件
 
         Args:
             file_url_mapping: 文件路径到 URL 的映射字典
-
-        Returns:
-            无
-
-        Raises:
-            Exception: 下载失败时抛出
         """
         try:
             if not file_url_mapping:
                 logger.warning("没有文件需要下载")
                 return
-
             asyncio.run(self._download_multiple_files(file_url_mapping))
         except Exception:
             logger.exception("文件下载失败")

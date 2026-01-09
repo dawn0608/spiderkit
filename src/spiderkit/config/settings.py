@@ -3,8 +3,6 @@
 提供 SpiderKit 的全局配置管理功能
 """
 
-import os
-from typing import Optional, Dict
 from dataclasses import dataclass, field
 
 from loguru import logger
@@ -14,39 +12,67 @@ from loguru import logger
 class SpiderKitConfig:
     """SpiderKit 全局配置类"""
 
-    # 下载器配置
     downloader_concurrency: int = 16
     downloader_timeout: int = 10
     downloader_max_retries: int = 3
     downloader_retry_delay: float = 1.0
-    downloader_headers: Dict[str, str] = field(default_factory=dict)
-
-    # 字体解析配置
+    downloader_headers: dict[str, str] = field(default_factory=dict)
     font_image_size: int = 400
     font_size: int = 240
     font_background: tuple = (255, 255, 255, 255)
     font_color: tuple = (0, 0, 0, 255)
     font_include_unicode_escape: bool = False
     font_download_timeout: int = 15
-
-    # 存储配置
     storage_default_format: str = "csv"
     storage_default_dir: str = "./data"
     storage_default_mode: str = "a"
-
-    # 日志配置
     log_level: str = "INFO"
     log_format: str = (
         "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>"
     )
-
-    # 临时文件配置
-    temp_dir: Optional[str] = None
+    temp_dir: str | None = None
     cleanup_temp_files: bool = True
 
 
-# 全局配置实例
-_global_config: Optional[SpiderKitConfig] = None
+_global_config: SpiderKitConfig | None = None
+
+
+def _load_config_from_env(config: SpiderKitConfig) -> None:
+    """从环境变量加载配置
+
+    Args:
+        config: 配置实例
+    """
+    try:
+        import os
+
+        env_mappings = {
+            "SPIDERKIT_DOWNLOADER_CONCURRENCY": ("downloader_concurrency", int),
+            "SPIDERKIT_DOWNLOADER_TIMEOUT": ("downloader_timeout", int),
+            "SPIDERKIT_DOWNLOADER_MAX_RETRIES": ("downloader_max_retries", int),
+            "SPIDERKIT_DOWNLOADER_RETRY_DELAY": ("downloader_retry_delay", float),
+            "SPIDERKIT_FONT_IMAGE_SIZE": ("font_image_size", int),
+            "SPIDERKIT_FONT_SIZE": ("font_size", int),
+            "SPIDERKIT_FONT_DOWNLOAD_TIMEOUT": ("font_download_timeout", int),
+            "SPIDERKIT_STORAGE_DEFAULT_FORMAT": ("storage_default_format", str),
+            "SPIDERKIT_STORAGE_DEFAULT_DIR": ("storage_default_dir", str),
+            "SPIDERKIT_STORAGE_DEFAULT_MODE": ("storage_default_mode", str),
+            "SPIDERKIT_LOG_LEVEL": ("log_level", str),
+            "SPIDERKIT_TEMP_DIR": ("temp_dir", str),
+            "SPIDERKIT_CLEANUP_TEMP_FILES": ("cleanup_temp_files", lambda x: x.lower() in ("true", "1", "yes")),
+        }
+        for env_key, (attr_name, converter) in env_mappings.items():
+            env_value = os.getenv(env_key)
+            if env_value is not None:
+                try:
+                    converted_value = converter(env_value)
+                    setattr(config, attr_name, converted_value)
+                    logger.debug(f"从环境变量加载配置: {attr_name} = {converted_value}")
+                except Exception:
+                    logger.warning(f"环境变量 {env_key} 值无效: {env_value}")
+    except Exception:
+        logger.exception("从环境变量加载配置失败")
+        raise
 
 
 def get_config() -> SpiderKitConfig:
@@ -54,9 +80,6 @@ def get_config() -> SpiderKitConfig:
 
     Returns:
         全局配置实例
-
-    Raises:
-        Exception: 配置获取失败时抛出
     """
     global _global_config
     try:
@@ -75,12 +98,6 @@ def set_config(config: SpiderKitConfig) -> None:
 
     Args:
         config: 新的配置实例
-
-    Returns:
-        无
-
-    Raises:
-        Exception: 配置设置失败时抛出
     """
     global _global_config
     try:
@@ -88,47 +105,4 @@ def set_config(config: SpiderKitConfig) -> None:
         logger.debug("更新全局配置")
     except Exception:
         logger.exception("设置全局配置失败")
-        raise
-
-
-def _load_config_from_env(config: SpiderKitConfig) -> None:
-    """从环境变量加载配置
-
-    Args:
-        config: 配置实例
-
-    Returns:
-        无
-
-    Raises:
-        Exception: 环境变量加载失败时抛出
-    """
-    try:
-        env_mappings = {
-            "SPIDERKIT_DOWNLOADER_CONCURRENCY": ("downloader_concurrency", int),
-            "SPIDERKIT_DOWNLOADER_TIMEOUT": ("downloader_timeout", int),
-            "SPIDERKIT_DOWNLOADER_MAX_RETRIES": ("downloader_max_retries", int),
-            "SPIDERKIT_DOWNLOADER_RETRY_DELAY": ("downloader_retry_delay", float),
-            "SPIDERKIT_FONT_IMAGE_SIZE": ("font_image_size", int),
-            "SPIDERKIT_FONT_SIZE": ("font_size", int),
-            "SPIDERKIT_FONT_DOWNLOAD_TIMEOUT": ("font_download_timeout", int),
-            "SPIDERKIT_STORAGE_DEFAULT_FORMAT": ("storage_default_format", str),
-            "SPIDERKIT_STORAGE_DEFAULT_DIR": ("storage_default_dir", str),
-            "SPIDERKIT_STORAGE_DEFAULT_MODE": ("storage_default_mode", str),
-            "SPIDERKIT_LOG_LEVEL": ("log_level", str),
-            "SPIDERKIT_TEMP_DIR": ("temp_dir", str),
-            "SPIDERKIT_CLEANUP_TEMP_FILES": ("cleanup_temp_files", lambda x: x.lower() in ("true", "1", "yes")),
-        }
-
-        for env_key, (attr_name, converter) in env_mappings.items():
-            env_value = os.getenv(env_key)
-            if env_value is not None:
-                try:
-                    converted_value = converter(env_value)
-                    setattr(config, attr_name, converted_value)
-                    logger.debug(f"从环境变量加载配置: {attr_name} = {converted_value}")
-                except Exception:
-                    logger.warning(f"环境变量 {env_key} 值无效: {env_value}")
-    except Exception:
-        logger.exception("从环境变量加载配置失败")
         raise

@@ -6,14 +6,13 @@
 import base64
 import hashlib
 import binascii
-from typing import Optional, Tuple, Union
 
 from loguru import logger
 from Crypto.Cipher import AES, DES, DES3
 from Crypto.Util.Padding import pad, unpad
 
 
-def _get_key_iv_bytes(encryption_key: Union[str, bytes], iv: Optional[Union[str, bytes]] = None, encoding_method: Optional[str] = None) -> Tuple[bytes, Optional[bytes]]:
+def _get_key_iv_bytes(encryption_key: str | bytes, iv: str | bytes | None = None, encoding_method: str | None = None) -> tuple[bytes, bytes | None]:
     """处理密钥和初始化向量的编码
 
     Args:
@@ -23,9 +22,6 @@ def _get_key_iv_bytes(encryption_key: Union[str, bytes], iv: Optional[Union[str,
 
     Returns:
         处理后的密钥和初始化向量
-
-    Raises:
-        Exception: 编码处理失败时抛出
     """
     try:
         method = encoding_method.lower() if encoding_method else None
@@ -38,21 +34,18 @@ def _get_key_iv_bytes(encryption_key: Union[str, bytes], iv: Optional[Union[str,
             encoder_function = encoding_methods.get(method)
             if not encoder_function:
                 raise ValueError(f"不支持的编码方法: {encoding_method}")
-
             processed_key = encoder_function(encryption_key)
             processed_iv = encoder_function(iv) if iv is not None else None
         else:
             processed_key = encryption_key.encode("utf-8") if isinstance(encryption_key, str) else encryption_key
             processed_iv = iv.encode("utf-8") if isinstance(iv, str) and iv is not None else iv
-
         return processed_key, processed_iv
     except Exception:
         logger.exception("密钥和初始化向量编码处理失败")
         raise
 
 
-def aes_encrypt(plaintext: str, encryption_key: Union[str, bytes], mode: str, iv: Optional[Union[str, bytes]] = None, encoding_method: Optional[str] = None,
-                output_format: str = "base64") -> str:
+def aes_encrypt(plaintext: str, encryption_key: str | bytes, mode: str, iv: str | bytes | None = None, encoding_method: str | None = None, output_format: str = "base64") -> str:
     """AES 加密
 
     Args:
@@ -65,13 +58,9 @@ def aes_encrypt(plaintext: str, encryption_key: Union[str, bytes], mode: str, iv
 
     Returns:
         加密后的密文
-
-    Raises:
-        Exception: 加密失败时抛出
     """
     try:
         key_bytes, iv_bytes = _get_key_iv_bytes(encryption_key, iv, encoding_method)
-
         mode = mode.upper()
         if mode == "ECB":
             cipher = AES.new(key=key_bytes, mode=AES.MODE_ECB)
@@ -79,7 +68,6 @@ def aes_encrypt(plaintext: str, encryption_key: Union[str, bytes], mode: str, iv
             cipher = AES.new(key=key_bytes, mode=AES.MODE_CBC, iv=iv_bytes)
         else:
             raise ValueError("加密模式必须是 ECB 或 CBC")
-
         padded_plaintext = pad(plaintext.encode("utf-8"), AES.block_size)
         encrypted_bytes = cipher.encrypt(padded_plaintext)
         result_bytes = binascii.hexlify(encrypted_bytes) if output_format == "hex" else base64.b64encode(encrypted_bytes)
@@ -89,7 +77,7 @@ def aes_encrypt(plaintext: str, encryption_key: Union[str, bytes], mode: str, iv
         raise
 
 
-def aes_decrypt(ciphertext: str, encryption_key: Union[str, bytes], mode: str, iv: Optional[Union[str, bytes]] = None, encoding_method: Optional[str] = None) -> str:
+def aes_decrypt(ciphertext: str, encryption_key: str | bytes, mode: str, iv: str | bytes | None = None, encoding_method: str | None = None) -> str:
     """AES 解密
 
     Args:
@@ -101,18 +89,13 @@ def aes_decrypt(ciphertext: str, encryption_key: Union[str, bytes], mode: str, i
 
     Returns:
         解密后的明文
-
-    Raises:
-        Exception: 解密失败时抛出
     """
     try:
         try:
             encrypted_data = binascii.unhexlify(ciphertext)
         except Exception:
             encrypted_data = base64.urlsafe_b64decode(ciphertext)
-
         key_bytes, iv_bytes = _get_key_iv_bytes(encryption_key, iv, encoding_method)
-
         mode = mode.upper()
         if mode == "ECB":
             cipher = AES.new(key=key_bytes, mode=AES.MODE_ECB)
@@ -120,7 +103,6 @@ def aes_decrypt(ciphertext: str, encryption_key: Union[str, bytes], mode: str, i
             cipher = AES.new(key=key_bytes, mode=AES.MODE_CBC, iv=iv_bytes)
         else:
             raise ValueError("解密模式必须是 ECB 或 CBC")
-
         decrypted_bytes = cipher.decrypt(encrypted_data)
         unpadded_plaintext = unpad(decrypted_bytes, AES.block_size)
         return unpadded_plaintext.decode("utf-8")
@@ -129,8 +111,7 @@ def aes_decrypt(ciphertext: str, encryption_key: Union[str, bytes], mode: str, i
         raise
 
 
-def des_encrypt(plaintext: str, encryption_key: Union[str, bytes], mode: str, iv: Optional[Union[str, bytes]] = None, encoding_method: Optional[str] = None,
-                output_format: str = "base64") -> str:
+def des_encrypt(plaintext: str, encryption_key: str | bytes, mode: str, iv: str | bytes | None = None, encoding_method: str | None = None, output_format: str = "base64") -> str:
     """DES 加密
 
     Args:
@@ -143,13 +124,9 @@ def des_encrypt(plaintext: str, encryption_key: Union[str, bytes], mode: str, iv
 
     Returns:
         加密后的密文
-
-    Raises:
-        Exception: 加密失败时抛出
     """
     try:
         key_bytes, iv_bytes = _get_key_iv_bytes(encryption_key, iv, encoding_method)
-
         mode = mode.upper()
         if mode == "ECB":
             cipher = DES.new(key=key_bytes, mode=DES.MODE_ECB)
@@ -157,7 +134,6 @@ def des_encrypt(plaintext: str, encryption_key: Union[str, bytes], mode: str, iv
             cipher = DES.new(key=key_bytes, mode=DES.MODE_CBC, iv=iv_bytes)
         else:
             raise ValueError("加密模式必须是 ECB 或 CBC")
-
         padded_plaintext = pad(plaintext.encode("utf-8"), DES.block_size)
         encrypted_bytes = cipher.encrypt(padded_plaintext)
         result_bytes = binascii.hexlify(encrypted_bytes) if output_format == "hex" else base64.b64encode(encrypted_bytes)
@@ -167,7 +143,7 @@ def des_encrypt(plaintext: str, encryption_key: Union[str, bytes], mode: str, iv
         raise
 
 
-def des_decrypt(ciphertext: str, encryption_key: Union[str, bytes], mode: str, iv: Optional[Union[str, bytes]] = None, encoding_method: Optional[str] = None) -> str:
+def des_decrypt(ciphertext: str, encryption_key: str | bytes, mode: str, iv: str | bytes | None = None, encoding_method: str | None = None) -> str:
     """DES 解密
 
     Args:
@@ -179,18 +155,13 @@ def des_decrypt(ciphertext: str, encryption_key: Union[str, bytes], mode: str, i
 
     Returns:
         解密后的明文
-
-    Raises:
-        Exception: 解密失败时抛出
     """
     try:
         try:
             encrypted_data = binascii.unhexlify(ciphertext)
         except Exception:
             encrypted_data = base64.urlsafe_b64decode(ciphertext)
-
         key_bytes, iv_bytes = _get_key_iv_bytes(encryption_key, iv, encoding_method)
-
         mode = mode.upper()
         if mode == "ECB":
             cipher = DES.new(key=key_bytes, mode=DES.MODE_ECB)
@@ -198,7 +169,6 @@ def des_decrypt(ciphertext: str, encryption_key: Union[str, bytes], mode: str, i
             cipher = DES.new(key=key_bytes, mode=DES.MODE_CBC, iv=iv_bytes)
         else:
             raise ValueError("解密模式必须是 ECB 或 CBC")
-
         decrypted_bytes = cipher.decrypt(encrypted_data)
         unpadded_plaintext = unpad(decrypted_bytes, DES.block_size)
         return unpadded_plaintext.decode("utf-8")
@@ -207,8 +177,7 @@ def des_decrypt(ciphertext: str, encryption_key: Union[str, bytes], mode: str, i
         raise
 
 
-def des3_encrypt(plaintext: str, encryption_key: Union[str, bytes], mode: str, iv: Optional[Union[str, bytes]] = None, encoding_method: Optional[str] = None,
-                 output_format: str = "base64") -> str:
+def des3_encrypt(plaintext: str, encryption_key: str | bytes, mode: str, iv: str | bytes | None = None, encoding_method: str | None = None, output_format: str = "base64") -> str:
     """3DES 加密
 
     Args:
@@ -221,13 +190,9 @@ def des3_encrypt(plaintext: str, encryption_key: Union[str, bytes], mode: str, i
 
     Returns:
         加密后的密文
-
-    Raises:
-        Exception: 加密失败时抛出
     """
     try:
         key_bytes, iv_bytes = _get_key_iv_bytes(encryption_key, iv, encoding_method)
-
         mode = mode.upper()
         if mode == "ECB":
             cipher = DES3.new(key=key_bytes, mode=DES3.MODE_ECB)
@@ -235,7 +200,6 @@ def des3_encrypt(plaintext: str, encryption_key: Union[str, bytes], mode: str, i
             cipher = DES3.new(key=key_bytes, mode=DES3.MODE_CBC, iv=iv_bytes)
         else:
             raise ValueError("加密模式必须是 ECB 或 CBC")
-
         padded_plaintext = pad(plaintext.encode("utf-8"), DES3.block_size)
         encrypted_bytes = cipher.encrypt(padded_plaintext)
         result_bytes = binascii.hexlify(encrypted_bytes) if output_format == "hex" else base64.b64encode(encrypted_bytes)
@@ -245,7 +209,7 @@ def des3_encrypt(plaintext: str, encryption_key: Union[str, bytes], mode: str, i
         raise
 
 
-def des3_decrypt(ciphertext: str, encryption_key: Union[str, bytes], mode: str, iv: Optional[Union[str, bytes]] = None, encoding_method: Optional[str] = None) -> str:
+def des3_decrypt(ciphertext: str, encryption_key: str | bytes, mode: str, iv: str | bytes | None = None, encoding_method: str | None = None) -> str:
     """3DES 解密
 
     Args:
@@ -257,18 +221,13 @@ def des3_decrypt(ciphertext: str, encryption_key: Union[str, bytes], mode: str, 
 
     Returns:
         解密后的明文
-
-    Raises:
-        Exception: 解密失败时抛出
     """
     try:
         try:
             encrypted_data = binascii.unhexlify(ciphertext)
         except Exception:
             encrypted_data = base64.urlsafe_b64decode(ciphertext)
-
         key_bytes, iv_bytes = _get_key_iv_bytes(encryption_key, iv, encoding_method)
-
         mode = mode.upper()
         if mode == "ECB":
             cipher = DES3.new(key=key_bytes, mode=DES3.MODE_ECB)
@@ -276,7 +235,6 @@ def des3_decrypt(ciphertext: str, encryption_key: Union[str, bytes], mode: str, 
             cipher = DES3.new(key=key_bytes, mode=DES3.MODE_CBC, iv=iv_bytes)
         else:
             raise ValueError("解密模式必须是 ECB 或 CBC")
-
         decrypted_bytes = cipher.decrypt(encrypted_data)
         unpadded_plaintext = unpad(decrypted_bytes, DES3.block_size)
         return unpadded_plaintext.decode("utf-8")

@@ -6,7 +6,6 @@
 import re
 import base64
 import binascii
-from typing import Union
 from textwrap import wrap
 
 from loguru import logger
@@ -27,7 +26,7 @@ RSA_HASH_MAP = {
 }
 
 
-def _to_standard_pem(key_pem: Union[str, bytes]) -> Union[str, bytes]:
+def _to_standard_pem(key_pem: str | bytes) -> str | bytes:
     """将公钥或私钥转换为标准 PEM 格式
 
     Args:
@@ -35,21 +34,16 @@ def _to_standard_pem(key_pem: Union[str, bytes]) -> Union[str, bytes]:
 
     Returns:
         标准格式的 PEM 公钥或私钥
-
-    Raises:
-        ValueError: 密钥格式无效时抛出
     """
     try:
         input_is_bytes = isinstance(key_pem, (bytes, bytearray))
         if input_is_bytes:
             key_pem = key_pem.decode("utf-8", errors="ignore")
-
         key_type = None
         for candidate in ("RSA PRIVATE KEY", "PRIVATE KEY", "PUBLIC KEY"):
             if re.search(rf"-----BEGIN {candidate}-----.+-----END {candidate}-----", key_pem, re.DOTALL):
                 key_type = candidate
                 break
-
         if key_type:
             match = re.search(rf"-----BEGIN {key_type}-----(.+?)-----END {key_type}-----", key_pem, re.DOTALL)
             base64_content = match.group(1)
@@ -58,7 +52,6 @@ def _to_standard_pem(key_pem: Union[str, bytes]) -> Union[str, bytes]:
             padding_length = 4 - (len(base64_content) % 4)
             if padding_length != 4:
                 base64_content += "=" * padding_length
-
             decoded_content = base64.b64decode(base64_content)
             standard_base64 = base64.b64encode(decoded_content).decode("ascii")
         else:
@@ -70,7 +63,6 @@ def _to_standard_pem(key_pem: Union[str, bytes]) -> Union[str, bytes]:
             decoded_content = base64.b64decode(clean_key)
             standard_base64 = base64.b64encode(decoded_content).decode("ascii")
             key_type = "PUBLIC KEY"
-
         formatted_base64 = wrap(standard_base64, 64)
         pem_text = "-----BEGIN {}-----\n{}\n-----END {}-----".format(key_type, "\n".join(formatted_base64), key_type)
         return pem_text.encode("ascii") if input_is_bytes else pem_text
@@ -87,9 +79,6 @@ def generate_rsa_keypair(key_size: int = 2048) -> tuple[bytes, bytes]:
 
     Returns:
         公钥和私钥的字节数据
-
-    Raises:
-        Exception: 密钥生成失败时抛出
     """
     try:
         rsa_key = RSA.generate(key_size)
@@ -102,7 +91,7 @@ def generate_rsa_keypair(key_size: int = 2048) -> tuple[bytes, bytes]:
         raise
 
 
-def rsa_encrypt(plaintext: str, public_key: Union[str, bytes], mode: str, hash_algorithm: str = "SHA1", output_format: str = "base64") -> str:
+def rsa_encrypt(plaintext: str, public_key: str | bytes, mode: str, hash_algorithm: str = "SHA1", output_format: str = "base64") -> str:
     """RSA 加密
 
     Args:
@@ -114,15 +103,11 @@ def rsa_encrypt(plaintext: str, public_key: Union[str, bytes], mode: str, hash_a
 
     Returns:
         加密后的密文
-
-    Raises:
-        Exception: 加密失败时抛出
     """
     try:
         hash_class = RSA_HASH_MAP[hash_algorithm.upper()]
         standard_pem = _to_standard_pem(public_key)
         rsa_key = RSA.import_key(standard_pem)
-
         mode = mode.upper()
         if mode == "OAEP":
             cipher = PKCS1_OAEP.new(rsa_key, hashAlgo=hash_class)
@@ -130,7 +115,6 @@ def rsa_encrypt(plaintext: str, public_key: Union[str, bytes], mode: str, hash_a
             cipher = PKCS1_v1_5.new(rsa_key)
         else:
             raise ValueError(f"不支持的加密模式: {mode}")
-
         encrypted_bytes = cipher.encrypt(plaintext.encode("utf-8"))
         result_bytes = binascii.hexlify(encrypted_bytes) if output_format == "hex" else base64.b64encode(encrypted_bytes)
         return result_bytes.decode("utf-8")
@@ -139,7 +123,7 @@ def rsa_encrypt(plaintext: str, public_key: Union[str, bytes], mode: str, hash_a
         raise
 
 
-def rsa_encrypt_long(plaintext: str, public_key: Union[str, bytes], mode: str, hash_algorithm: str = "SHA1", output_format: str = "base64") -> str:
+def rsa_encrypt_long(plaintext: str, public_key: str | bytes, mode: str, hash_algorithm: str = "SHA1", output_format: str = "base64") -> str:
     """RSA 长文本分块加密
 
     Args:
@@ -151,9 +135,6 @@ def rsa_encrypt_long(plaintext: str, public_key: Union[str, bytes], mode: str, h
 
     Returns:
         加密后的密文
-
-    Raises:
-        Exception: 加密失败时抛出
     """
     try:
         hash_class = RSA_HASH_MAP[hash_algorithm.upper()]
@@ -174,7 +155,7 @@ def rsa_encrypt_long(plaintext: str, public_key: Union[str, bytes], mode: str, h
             raise ValueError(f"不支持的加密模式: {mode}")
 
         for start_index in range(0, len(plaintext_bytes), max_block_size):
-            data_block = plaintext_bytes[start_index: start_index + max_block_size]
+            data_block = plaintext_bytes[start_index : start_index + max_block_size]
             encrypted_chunks += cipher.encrypt(data_block)
 
         result_bytes = binascii.hexlify(encrypted_chunks) if output_format == "hex" else base64.b64encode(encrypted_chunks)
@@ -184,7 +165,7 @@ def rsa_encrypt_long(plaintext: str, public_key: Union[str, bytes], mode: str, h
         raise
 
 
-def rsa_decrypt(ciphertext: str, private_key: Union[str, bytes], mode: str, hash_algorithm: str = "SHA1") -> str:
+def rsa_decrypt(ciphertext: str, private_key: str | bytes, mode: str, hash_algorithm: str = "SHA1") -> str:
     """RSA 解密
 
     Args:
@@ -195,20 +176,15 @@ def rsa_decrypt(ciphertext: str, private_key: Union[str, bytes], mode: str, hash
 
     Returns:
         解密后的明文
-
-    Raises:
-        Exception: 解密失败时抛出
     """
     try:
         try:
             encrypted_bytes = binascii.unhexlify(ciphertext)
         except Exception:
             encrypted_bytes = base64.urlsafe_b64decode(ciphertext)
-
         hash_class = RSA_HASH_MAP[hash_algorithm.upper()]
         standard_pem = _to_standard_pem(private_key)
         rsa_key = RSA.import_key(standard_pem)
-
         mode = mode.upper()
         if mode == "OAEP":
             cipher = PKCS1_OAEP.new(rsa_key, hashAlgo=hash_class)
@@ -218,7 +194,6 @@ def rsa_decrypt(ciphertext: str, private_key: Union[str, bytes], mode: str, hash
             decrypted_bytes = cipher.decrypt(encrypted_bytes, None)
         else:
             raise ValueError(f"不支持的解密模式: {mode}")
-
         return decrypted_bytes.decode("utf-8")
     except Exception:
         logger.exception("RSA 解密失败")
@@ -235,9 +210,6 @@ def rsa_algorithm(plaintext: str, exponent: int, modulus: int) -> str:
 
     Returns:
         加密结果的十六进制字符串
-
-    Raises:
-        Exception: 计算失败时抛出
     """
     try:
         hex_representation = binascii.hexlify(plaintext.encode("utf-8")).decode("utf-8")

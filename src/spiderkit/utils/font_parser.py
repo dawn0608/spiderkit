@@ -8,10 +8,10 @@ import hashlib
 import tempfile
 import urllib.request
 from pathlib import Path
+from typing import Optional
 from contextlib import suppress
 from dataclasses import dataclass
 from urllib.parse import urlparse
-from typing import Optional, Dict, Union
 
 from loguru import logger
 from ddddocr import DdddOcr
@@ -33,34 +33,24 @@ class FontParseConfig:
     include_unicode_escape: bool = False
 
 
-def _save_font_maps(font_maps: Dict[str, str], json_file_path: Union[str, Path]) -> None:
+def _save_font_maps(font_maps: dict[str, str], json_file_path: str | Path) -> None:
     """保存字体映射到 JSON 文件, 并合并已有内容
 
     Args:
         font_maps: 字体映射字典
         json_file_path: JSON 文件路径
-
-    Returns:
-        无
-
-    Raises:
-        Exception: 保存失败时抛出
     """
     try:
         json_path = Path(json_file_path)
-        existing_data: Dict[str, str] = {}
-
+        existing_data: dict[str, str] = {}
         with suppress(Exception):
             with json_path.open("r", encoding="utf-8") as file:
                 existing_data = json.load(file)
-
         merged_maps = {**existing_data, **font_maps}
         if json_path.parent:
             json_path.parent.mkdir(parents=True, exist_ok=True)
-
         with json_path.open("w", encoding="utf-8") as file:
             json.dump(merged_maps, file, ensure_ascii=False, indent=4)
-
         existing_keys = set(existing_data.keys())
         new_keys = set(font_maps.keys())
         added = len(new_keys - existing_keys)
@@ -81,9 +71,6 @@ def _render_char_image(font: FreeTypeFont, char: str, config: Optional[FontParse
 
     Returns:
         渲染后的图片, 无法渲染时返回 None
-
-    Raises:
-        Exception: 渲染失败时抛出
     """
     try:
         if config is None:
@@ -95,11 +82,9 @@ def _render_char_image(font: FreeTypeFont, char: str, config: Optional[FontParse
                 color=global_config.font_color,
                 include_unicode_escape=global_config.font_include_unicode_escape,
             )
-
         bbox = font.getbbox(char)
         if not bbox:
             return None
-
         image = Image.new("RGBA", (config.image_size, config.image_size), config.background)
         draw = ImageDraw.Draw(image)
         text_width = bbox[2] - bbox[0]
@@ -124,9 +109,6 @@ def _recognize_char(font: FreeTypeFont, ocr: DdddOcr, char: str, config: Optiona
 
     Returns:
         OCR 识别结果, 识别失败时返回空字符串
-
-    Raises:
-        Exception: 识别失败时抛出
     """
     try:
         image = _render_char_image(font, char, config)
@@ -146,9 +128,6 @@ def _iter_font_chars(font_data: TTFont) -> list:
 
     Returns:
         字符列表
-
-    Raises:
-        Exception: 遍历失败时抛出
     """
     try:
         cmap = font_data.getBestCmap() or {}
@@ -158,7 +137,7 @@ def _iter_font_chars(font_data: TTFont) -> list:
         raise
 
 
-def _build_download_path(font_url: str, download_dir: Optional[Union[str, Path]]) -> Path:
+def _build_download_path(font_url: str, download_dir: Optional[str | Path]) -> Path:
     """构建字体下载路径
 
     Args:
@@ -167,19 +146,14 @@ def _build_download_path(font_url: str, download_dir: Optional[Union[str, Path]]
 
     Returns:
         下载文件路径
-
-    Raises:
-        Exception: 路径构建失败时抛出
     """
     try:
         parsed = urlparse(font_url)
         filename = Path(parsed.path).name or "font.ttf"
         if not Path(filename).suffix:
             filename = f"{filename}.ttf"
-
         fingerprint = hashlib.sha1(font_url.encode("utf-8")).hexdigest()[:8]
         final_name = f"{fingerprint}_{filename}"
-
         if download_dir is None:
             download_dir = tempfile.mkdtemp(prefix="font_download_")
         download_path = Path(download_dir)
@@ -190,7 +164,7 @@ def _build_download_path(font_url: str, download_dir: Optional[Union[str, Path]]
         raise
 
 
-def _download_font_file(font_source: Union[str, Path], download_dir: Optional[Union[str, Path]] = None, timeout: Optional[int] = None) -> Path:
+def _download_font_file(font_source: str | Path, download_dir: Optional[str | Path] = None, timeout: Optional[int] = None) -> Path:
     """解析字体来源并返回本地路径(必要时下载)
 
     Args:
@@ -200,9 +174,6 @@ def _download_font_file(font_source: Union[str, Path], download_dir: Optional[Un
 
     Returns:
         字体文件本地路径
-
-    Raises:
-        Exception: 处理失败时抛出
     """
     try:
         if timeout is None:
@@ -246,7 +217,7 @@ def _download_font_file(font_source: Union[str, Path], download_dir: Optional[Un
         raise
 
 
-def parse_font(font_source: Union[str, Path], download_dir: Optional[Union[str, Path]] = None, save_json: bool = False, json_file_path: Optional[Union[str, Path]] = None) -> Dict:
+def parse_font(font_source: str | Path, download_dir: Optional[str | Path] = None, save_json: bool = False, json_file_path: Optional[str | Path] = None) -> dict:
     """解析字体文件并生成字符映射
 
     Args:
@@ -257,9 +228,6 @@ def parse_font(font_source: Union[str, Path], download_dir: Optional[Union[str, 
 
     Returns:
         字体映射字典
-
-    Raises:
-        Exception: 解析失败时抛出
     """
     try:
         font_path = _download_font_file(font_source, download_dir=download_dir)
@@ -275,7 +243,7 @@ def parse_font(font_source: Union[str, Path], download_dir: Optional[Union[str, 
                 include_unicode_escape=global_config.font_include_unicode_escape,
             )
         ocr = DdddOcr(show_ad=False)
-        font_maps: Dict[str, str] = {}
+        font_maps: dict[str, str] = {}
 
         with TTFont(font_path) as font_data:
             pil_font = ImageFont.truetype(str(font_path), size=config.font_size)
@@ -302,7 +270,7 @@ def parse_font(font_source: Union[str, Path], download_dir: Optional[Union[str, 
         raise
 
 
-def decrypt_text_with_font_maps(encrypted_text: str, font_maps: Dict[str, str]) -> str:
+def decrypt_text_with_font_maps(encrypted_text: str, font_maps: dict[str, str]) -> str:
     """使用字体映射解密文本内容, 未匹配字符保持原样
 
     Args:
@@ -311,9 +279,6 @@ def decrypt_text_with_font_maps(encrypted_text: str, font_maps: Dict[str, str]) 
 
     Returns:
         解密后的文本
-
-    Raises:
-        Exception: 解密失败时抛出
     """
     try:
         return "".join(font_maps.get(char, font_maps.get(f"\\u{ord(char):04x}", char)) for char in encrypted_text)
